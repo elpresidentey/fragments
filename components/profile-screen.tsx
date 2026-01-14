@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -103,21 +104,30 @@ export function ProfileScreen() {
 
   // Handle logout
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: signOut,
-        },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      // Use browser's native confirm dialog on web
+      const confirmed = window.confirm('Are you sure you want to sign out?');
+      if (confirmed) {
+        signOut();
+      }
+    } else {
+      // Use React Native Alert on mobile
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: signOut,
+          },
+        ]
+      );
+    }
   };
 
   // Handle profile update
