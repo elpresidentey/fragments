@@ -1,12 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { ThemedText } from './themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { themeEngine } from '@/design-system/theme/theme-engine';
-import { useButtonPressAnimation, useLikeAnimation } from '@/design-system/hooks/use-animation';
-import { useVisualFeedback, useHoverEffect } from '@/design-system/hooks/use-visual-feedback';
 import { useAccessibility } from '@/design-system/hooks/use-accessibility';
 import { createSemanticLabel, formatNumberForScreenReader } from '@/design-system/utils/accessibility-utils';
 import { memoCustom, useStableCallback, useMemoizedStyles } from '@/design-system/utils/memoization-utils';
@@ -63,36 +60,30 @@ function PostCardComponent({
   // Accessibility hook
   const { getAccessibilityProps, announceForAccessibility } = useAccessibility();
 
-  // Animation hooks with enhanced visual feedback
-  const { animatedStyle: cardAnimatedStyle, handlePressIn, handlePressOut } = useButtonPressAnimation({
-    scale: 0.98,
-    onPress,
-  });
+  // Simplified - no 3D animations, just functional buttons
+  const handleLikePress = useStableCallback(() => {
+    if (onLike) {
+      onLike();
+    }
+  }, [onLike]);
 
-  const { animatedStyle: cardHoverStyle, handleHoverIn: handleCardHoverIn, handleHoverOut: handleCardHoverOut } = useHoverEffect({
-    hoverScale: 1.01,
-    disabled: !onPress,
-  });
+  const handleRetweetPress = useStableCallback(() => {
+    if (onRetweet) {
+      onRetweet();
+    }
+  }, [onRetweet]);
 
-  const { animatedStyle: likeAnimatedStyle, handleLike } = useLikeAnimation({
-    onLike,
-    isLiked: post.engagement?.isLiked,
-  });
+  const handleCommentPress = useStableCallback(() => {
+    if (onComment) {
+      onComment();
+    }
+  }, [onComment]);
 
-  const { animatedStyle: commentFeedbackStyle, handlePressIn: handleCommentPress } = useVisualFeedback({
-    feedbackType: 'info',
-    onPress: onComment,
-  });
-
-  const { animatedStyle: retweetFeedbackStyle, handlePressIn: handleRetweetPress } = useVisualFeedback({
-    feedbackType: post.engagement?.isRetweeted ? 'success' : 'press',
-    onPress: onRetweet,
-  });
-
-  const { animatedStyle: shareFeedbackStyle, handlePressIn: handleSharePress } = useVisualFeedback({
-    feedbackType: 'info',
-    onPress: onShare,
-  });
+  const handleSharePress = useStableCallback(() => {
+    if (onShare) {
+      onShare();
+    }
+  }, [onShare]);
 
   // Memoized timestamp formatting
   const formattedTimestamp = useMemo(() => {
@@ -136,13 +127,13 @@ function PostCardComponent({
   // Enhanced accessibility handlers with stable callbacks
   const handleLikeWithAnnouncement = useStableCallback(() => {
     const wasLiked = post.engagement?.isLiked;
-    handleLike();
+    handleLikePress();
     
     // Announce the action to screen readers
     const action = wasLiked ? 'unliked' : 'liked';
     const newCount = (post.engagement?.likes || 0) + (wasLiked ? -1 : 1);
     announceForAccessibility(`Post ${action}. ${formatNumberForScreenReader(newCount)} likes`);
-  }, [post.engagement?.isLiked, post.engagement?.likes, handleLike, announceForAccessibility]);
+  }, [post.engagement?.isLiked, post.engagement?.likes, handleLikePress, announceForAccessibility]);
 
   const handleRetweetWithAnnouncement = useStableCallback(() => {
     const wasRetweeted = post.engagement?.isRetweeted;
@@ -198,14 +189,11 @@ function PostCardComponent({
   }, [post, formattedTimestamp]);
 
   return (
-    <Animated.View style={[cardAnimatedStyle, cardHoverStyle]}>
+    <View>
       <TouchableOpacity 
         style={memoizedStyles.container}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onHoverIn={handleCardHoverIn}
-        onHoverOut={handleCardHoverOut}
-        activeOpacity={1}
+        onPress={onPress}
+        activeOpacity={0.7}
         {...getAccessibilityProps({
           label: accessibilityLabels.post,
           hint: onPress ? 'Double tap to view post details' : undefined,
@@ -337,7 +325,7 @@ function PostCardComponent({
           </View>
         )}
 
-        {/* Twitter-style engagement buttons with enhanced feedback */}
+        {/* Twitter-style engagement buttons - flat design, no 3D effects */}
         {showEngagementActions && (
           <View 
             style={styles.engagementActions}
@@ -346,114 +334,106 @@ function PostCardComponent({
               role: 'none',
             })}
           >
-            <Animated.View style={commentFeedbackStyle}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPressIn={handleCommentWithAnnouncement}
-                activeOpacity={0.7}
-                {...getAccessibilityProps({
-                  label: accessibilityLabels.comment,
-                  hint: 'Double tap to comment on this post',
-                  role: 'button',
-                })}
-              >
-                <ThemedText style={[styles.actionIcon, { color: theme.colors.textSecondary }]}>
-                  💬
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={handleCommentWithAnnouncement}
+              activeOpacity={0.6}
+              {...getAccessibilityProps({
+                label: accessibilityLabels.comment,
+                hint: 'Double tap to comment on this post',
+                role: 'button',
+              })}
+            >
+              <ThemedText style={[styles.actionIcon, { color: theme.colors.textSecondary }]}>
+                💬
+              </ThemedText>
+              {post.engagement?.comments && post.engagement.comments > 0 && (
+                <ThemedText 
+                  style={[styles.actionCount, { color: theme.colors.textSecondary }]}
+                  accessibilityElementsHidden={true}
+                >
+                  {formatEngagementCount(post.engagement.comments)}
                 </ThemedText>
-                {post.engagement?.comments && post.engagement.comments > 0 && (
-                  <ThemedText 
-                    style={[styles.actionCount, { color: theme.colors.textSecondary }]}
-                    accessibilityElementsHidden={true}
-                  >
-                    {formatEngagementCount(post.engagement.comments)}
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+              )}
+            </TouchableOpacity>
 
-            <Animated.View style={retweetFeedbackStyle}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPressIn={handleRetweetWithAnnouncement}
-                activeOpacity={0.7}
-                {...getAccessibilityProps({
-                  label: accessibilityLabels.retweet,
-                  hint: 'Double tap to retweet this post',
-                  role: 'button',
-                  state: { selected: post.engagement?.isRetweeted },
-                })}
-              >
-                <ThemedText style={[
-                  styles.actionIcon, 
-                  { color: post.engagement?.isRetweeted ? theme.colors.success : theme.colors.textSecondary }
-                ]}>
-                  🔄
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={handleRetweetWithAnnouncement}
+              activeOpacity={0.6}
+              {...getAccessibilityProps({
+                label: accessibilityLabels.retweet,
+                hint: 'Double tap to retweet this post',
+                role: 'button',
+                state: { selected: post.engagement?.isRetweeted },
+              })}
+            >
+              <ThemedText style={[
+                styles.actionIcon, 
+                { color: post.engagement?.isRetweeted ? theme.colors.success : theme.colors.textSecondary }
+              ]}>
+                🔄
+              </ThemedText>
+              {post.engagement?.retweets && post.engagement.retweets > 0 && (
+                <ThemedText 
+                  style={[
+                    styles.actionCount, 
+                    { color: post.engagement?.isRetweeted ? theme.colors.success : theme.colors.textSecondary }
+                  ]}
+                  accessibilityElementsHidden={true}
+                >
+                  {formatEngagementCount(post.engagement.retweets)}
                 </ThemedText>
-                {post.engagement?.retweets && post.engagement.retweets > 0 && (
-                  <ThemedText 
-                    style={[
-                      styles.actionCount, 
-                      { color: post.engagement?.isRetweeted ? theme.colors.success : theme.colors.textSecondary }
-                    ]}
-                    accessibilityElementsHidden={true}
-                  >
-                    {formatEngagementCount(post.engagement.retweets)}
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+              )}
+            </TouchableOpacity>
 
-            <Animated.View style={likeAnimatedStyle}>
-              <TouchableOpacity 
-                style={[
-                  styles.actionButton,
-                  post.engagement?.isLiked && styles.likedButton
-                ]}
-                onPress={handleLikeWithAnnouncement}
-                activeOpacity={0.7}
-                {...getAccessibilityProps({
-                  label: accessibilityLabels.like,
-                  hint: 'Double tap to like this post',
-                  role: 'button',
-                  state: { selected: post.engagement?.isLiked },
-                })}
-              >
-                <ThemedText style={[
-                  styles.actionIcon, 
-                  { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
-                ]}>
-                  {post.engagement?.isLiked ? '❤️' : '♡'}
+            <TouchableOpacity 
+              style={[
+                styles.actionButton,
+                post.engagement?.isLiked && styles.likedButton
+              ]}
+              onPress={handleLikeWithAnnouncement}
+              activeOpacity={0.6}
+              {...getAccessibilityProps({
+                label: accessibilityLabels.like,
+                hint: 'Double tap to like this post',
+                role: 'button',
+                state: { selected: post.engagement?.isLiked },
+              })}
+            >
+              <ThemedText style={[
+                styles.actionIcon, 
+                { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
+              ]}>
+                {post.engagement?.isLiked ? '❤️' : '♡'}
+              </ThemedText>
+              {post.engagement?.likes && post.engagement.likes > 0 && (
+                <ThemedText 
+                  style={[
+                    styles.actionCount, 
+                    { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
+                  ]}
+                  accessibilityElementsHidden={true}
+                >
+                  {formatEngagementCount(post.engagement.likes)}
                 </ThemedText>
-                {post.engagement?.likes && post.engagement.likes > 0 && (
-                  <ThemedText 
-                    style={[
-                      styles.actionCount, 
-                      { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
-                    ]}
-                    accessibilityElementsHidden={true}
-                  >
-                    {formatEngagementCount(post.engagement.likes)}
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+              )}
+            </TouchableOpacity>
 
-            <Animated.View style={shareFeedbackStyle}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPressIn={handleShareWithAnnouncement}
-                activeOpacity={0.7}
-                {...getAccessibilityProps({
-                  label: 'Share post',
-                  hint: 'Double tap to share this post',
-                  role: 'button',
-                })}
-              >
-                <ThemedText style={[styles.actionIcon, { color: theme.colors.textSecondary }]}>
-                  📤
-                </ThemedText>
-              </TouchableOpacity>
-            </Animated.View>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={handleShareWithAnnouncement}
+              activeOpacity={0.6}
+              {...getAccessibilityProps({
+                label: 'Share post',
+                hint: 'Double tap to share this post',
+                role: 'button',
+              })}
+            >
+              <ThemedText style={[styles.actionIcon, { color: theme.colors.textSecondary }]}>
+                📤
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -514,7 +494,7 @@ function PostCardComponent({
           accessibilityElementsHidden={true}
         />
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 }
 
