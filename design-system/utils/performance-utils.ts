@@ -309,6 +309,16 @@ class ImageCache {
    * Get cached image or load and cache it
    */
   async getCachedImage(uri: string): Promise<string> {
+    // Skip caching for blob URLs and data URLs - they're already in-memory references
+    if (uri.startsWith('blob:') || uri.startsWith('data:')) {
+      return uri;
+    }
+    
+    // Skip caching for non-HTTP URLs (file://, etc.)
+    if (!uri.startsWith('http://') && !uri.startsWith('https://')) {
+      return uri;
+    }
+    
     const cached = this.cache.get(uri);
     
     if (cached && Date.now() - cached.timestamp < this.options.maxAge) {
