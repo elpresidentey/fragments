@@ -107,22 +107,24 @@ export default function CreatePostScreen() {
 
     try {
       announceForAccessibility('Opening image picker');
+      setIsUploadingImage(true);
       
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [16, 9], // Twitter-like aspect ratio
-        quality: 0.8,
+        quality: 1, // Get full quality, we'll compress during upload
         base64: false,
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         
-        // Validate file size (5MB limit)
-        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-          showError('Image size must be less than 5MB');
+        // Validate file size (50MB limit before compression)
+        if (asset.fileSize && asset.fileSize > 50 * 1024 * 1024) {
+          showError('Image size must be less than 50MB');
           announceForAccessibility('Image too large, please select a smaller image');
+          setIsUploadingImage(false);
           return;
         }
 
@@ -131,6 +133,7 @@ export default function CreatePostScreen() {
         if (asset.mimeType && !validTypes.includes(asset.mimeType)) {
           showError('Please select a valid image file (JPEG, PNG, or WebP)');
           announceForAccessibility('Invalid image format, please select a JPEG, PNG, or WebP image');
+          setIsUploadingImage(false);
           return;
         }
 
@@ -143,6 +146,8 @@ export default function CreatePostScreen() {
       console.error('Error picking image:', err);
       showError('Failed to select image');
       announceForAccessibility('Failed to select image, please try again');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 

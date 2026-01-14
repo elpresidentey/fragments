@@ -1,11 +1,54 @@
 import { supabase } from '../supabase'
 import { StorageService } from '../../types'
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 
 class StorageServiceImpl implements StorageService {
   private readonly BUCKET_NAME = 'post-images'
 
   /**
-   * Upload an image to Supabase Storage
+   * Compress image before upload
+   */
+  private async compressImage(uri: string): Promise<{ uri: string; size: number }> {
+    try {
+      // Compress and resize image
+      const manipResult = await manipulateAsync(
+        uri,
+        [
+          {
+            resize: {
+              width: 1920, // Max width
+              height: 1080, // Max height
+            },
+          },
+        ],
+        {
+          compress: 0.8, // 80% quality
+          format: SaveFormat.JPEG,
+        }
+      );
+
+      // Get compressed file size
+      const response = await fetch(manipResult.uri);
+      const blob = await response.blob();
+
+      return {
+        uri: manipResult.uri,
+        size: blob.size,
+      };
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      // Return original if compression fails
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return {
+        uri,
+        size: blob.size,
+      };
+    }
+  }
+
+  /**
+   * Upload an image to Supabase Storage with automatic compression
    */
   async uploadImage(uri: string, path: string): Promise<string> {
     try {
@@ -15,12 +58,22 @@ class StorageServiceImpl implements StorageService {
         throw new Error('User not authenticated')
       }
 
+      // Compress image first
+      const { uri: compressedUri, size } = await this.compressImage(uri);
+      
+      console.log(`Image compressed: ${(size / 1024 / 1024).toFixed(2)}MB`);
+
+      // Ensure compressed image is under 5MB
+      if (size > 5 * 1024 * 1024) {
+        throw new Error('Compressed image is still too large. Please select a smaller image.');
+      }
+
       // Create a unique file path
-      const fileExt = path.split('.').pop()
+      const fileExt = 'jpg'; // Always use jpg after compression
       const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
       // Convert URI to blob for upload
-      const response = await fetch(uri)
+      const response = await fetch(compressedUri)
       const blob = await response.blob()
 
       // Upload file to Supabase Storage
@@ -29,6 +82,7 @@ class StorageServiceImpl implements StorageService {
         .upload(fileName, blob, {
           cacheControl: '3600',
           upsert: false,
+          contentType: 'image/jpeg',
         })
 
       if (error) {
