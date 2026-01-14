@@ -158,7 +158,7 @@ class PostServiceImpl implements PostService {
     }, {
       requireAuth: true,
       rateLimitKey: 'get_posts',
-      maxAttempts: 60 // Allow 60 requests per minute
+      maxAttempts: 120 // Allow 120 requests per minute (2 per second)
     })
   }
 
@@ -233,7 +233,7 @@ class PostServiceImpl implements PostService {
     }, {
       requireAuth: true,
       rateLimitKey: 'get_user_posts',
-      maxAttempts: 30 // Allow 30 requests per minute
+      maxAttempts: 120 // Allow 120 requests per minute (2 per second)
     })
   }
 
