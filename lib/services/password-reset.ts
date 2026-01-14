@@ -75,8 +75,13 @@ class PasswordResetService {
       }
 
       // Use Supabase's built-in password reset functionality
+      // Use the correct redirect URL based on environment
+      const redirectUrl = typeof window !== 'undefined' && window.location.origin
+        ? `${window.location.origin}/reset-password`
+        : 'fragments://reset-password';
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `fragments://reset-password`,
+        redirectTo: redirectUrl,
       })
 
       if (error) {
