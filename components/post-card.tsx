@@ -405,7 +405,10 @@ function PostCardComponent({
 
             <Animated.View style={likeAnimatedStyle}>
               <TouchableOpacity 
-                style={styles.actionButton}
+                style={[
+                  styles.actionButton,
+                  post.engagement?.isLiked && styles.likedButton
+                ]}
                 onPress={handleLikeWithAnnouncement}
                 activeOpacity={0.7}
                 {...getAccessibilityProps({
@@ -417,15 +420,15 @@ function PostCardComponent({
               >
                 <ThemedText style={[
                   styles.actionIcon, 
-                  { color: post.engagement?.isLiked ? theme.colors.error : theme.colors.textSecondary }
+                  { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
                 ]}>
-                  {post.engagement?.isLiked ? '❤️' : '🤍'}
+                  {post.engagement?.isLiked ? '❤️' : '♡'}
                 </ThemedText>
                 {post.engagement?.likes && post.engagement.likes > 0 && (
                   <ThemedText 
                     style={[
                       styles.actionCount, 
-                      { color: post.engagement?.isLiked ? theme.colors.error : theme.colors.textSecondary }
+                      { color: post.engagement?.isLiked ? '#E0245E' : theme.colors.textSecondary }
                     ]}
                     accessibilityElementsHidden={true}
                   >
@@ -677,8 +680,12 @@ const styles = StyleSheet.create({
     minWidth: 32,
     minHeight: 32,
   },
+  likedButton: {
+    backgroundColor: 'rgba(224, 36, 94, 0.1)', // Subtle pink background when liked
+    borderRadius: 16,
+  },
   actionIcon: {
-    fontSize: 16,
+    fontSize: 20, // Increased from 16 to 20 for better visibility
     marginRight: 4,
   },
   actionCount: {
