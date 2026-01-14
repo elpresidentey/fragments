@@ -76,9 +76,24 @@ class PasswordResetService {
 
       // Use Supabase's built-in password reset functionality
       // Use the correct redirect URL based on environment
-      const redirectUrl = typeof window !== 'undefined' && window.location.origin
-        ? `${window.location.origin}/reset-password`
-        : 'fragments://reset-password';
+      let redirectUrl: string;
+      
+      if (typeof window !== 'undefined') {
+        // We're on web - use the current origin or fallback to Vercel URL
+        const origin = window.location.origin;
+        
+        // If running on localhost, use Vercel production URL instead
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+          redirectUrl = 'https://fragments-test.vercel.app/reset-password';
+        } else {
+          redirectUrl = `${origin}/reset-password`;
+        }
+      } else {
+        // Mobile app - use deep link
+        redirectUrl = 'fragments://reset-password';
+      }
+      
+      console.log('Password reset redirect URL:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: redirectUrl,
