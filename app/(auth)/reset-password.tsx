@@ -39,9 +39,27 @@ export default function ResetPasswordScreen() {
         
         logDeepLinkEvent('token_validation_start', { params })
         
-        // Check for error parameters from deep link
-        const error = params.error as string
-        const errorDescription = params.errorDescription as string
+        // Parse hash fragments from URL (Supabase sends tokens in hash, not query params)
+        let hashParams: Record<string, string> = {}
+        
+        if (typeof window !== 'undefined' && window.location.hash) {
+          const hash = window.location.hash.substring(1) // Remove the # character
+          const hashPairs = hash.split('&')
+          
+          hashPairs.forEach(pair => {
+            const [key, value] = pair.split('=')
+            if (key && value) {
+              hashParams[key] = decodeURIComponent(value)
+            }
+          })
+          
+          console.log('Parsed hash params:', Object.keys(hashParams))
+          logDeepLinkEvent('hash_params_parsed', { keys: Object.keys(hashParams) })
+        }
+        
+        // Check for error parameters from deep link (query params or hash)
+        const error = (params.error as string) || hashParams.error
+        const errorDescription = (params.errorDescription as string) || hashParams.error_description
         
         if (error) {
           console.error('Deep link error:', error, errorDescription)
@@ -62,10 +80,10 @@ export default function ResetPasswordScreen() {
           return
         }
         
-        // Check for token parameters from deep link
-        const accessToken = params.accessToken as string
-        const refreshToken = params.refreshToken as string
-        const type = params.type as string
+        // Check for token parameters from deep link (query params or hash)
+        const accessToken = (params.accessToken as string) || hashParams.access_token
+        const refreshToken = (params.refreshToken as string) || hashParams.refresh_token
+        const type = (params.type as string) || hashParams.type
         
         if (accessToken && refreshToken && type === 'recovery') {
           console.log('Setting session from deep link tokens')
